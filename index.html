@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hành trình Thầy Nam</title>
+<style>
+  :root { --bg:#0f1115; --card:#181b22; --line:#262a33; --txt:#e8e8ea; --dim:#8a8f9c; --acc:#f5b942; --ok:#4ade80; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: system-ui, -apple-system, sans-serif; background:var(--bg); color:var(--txt); padding:16px; max-width:900px; margin-inline:auto; }
+  h1 { font-size:20px; margin:0 0 4px; }
+  h2 { font-size:15px; margin:0 0 10px; color:var(--acc); text-transform:uppercase; letter-spacing:.5px; }
+  .sub { color:var(--dim); font-size:13px; margin-bottom:16px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px; margin-bottom:14px; }
+  .level-row { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px; }
+  .level { font-size:28px; font-weight:700; color:var(--acc); }
+  .xp-bar { height:12px; background:var(--line); border-radius:99px; overflow:hidden; }
+  .xp-fill { height:100%; background:linear-gradient(90deg,#f5b942,#4ade80); width:0%; transition:width .4s; }
+  .stats { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:12px; }
+  .stat { background:var(--bg); border-radius:10px; padding:10px; text-align:center; }
+  .stat b { display:block; font-size:18px; }
+  .stat span { color:var(--dim); font-size:11px; }
+  .day { border-top:1px solid var(--line); padding:12px 0; }
+  .day:first-child { border-top:none; padding-top:0; }
+  .day-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
+  .day-name { font-weight:600; }
+  .tag { font-size:11px; padding:3px 8px; border-radius:99px; background:var(--line); color:var(--dim); }
+  .tag.gold { background:#3a2f12; color:var(--acc); }
+  .task { display:flex; align-items:center; gap:10px; padding:6px 0; font-size:14px; cursor:pointer; }
+  .task input { width:18px; height:18px; accent-color:var(--ok); }
+  .task.done span { text-decoration:line-through; color:var(--dim); }
+  .prep { font-size:12px; color:var(--dim); margin-top:6px; line-height:1.5; }
+  .badges { display:flex; flex-wrap:wrap; gap:8px; }
+  .badge { font-size:12px; padding:6px 10px; border-radius:10px; background:var(--bg); border:1px solid var(--line); color:var(--dim); }
+  .badge.on { border-color:var(--acc); color:var(--acc); }
+  .inputs { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; }
+  label { font-size:12px; color:var(--dim); display:block; margin-bottom:4px; }
+  input[type=number], input[type=text] { width:100%; background:var(--bg); border:1px solid var(--line); color:var(--txt); border-radius:8px; padding:8px; font-size:14px; }
+  button { background:var(--line); color:var(--txt); border:none; border-radius:8px; padding:8px 12px; cursor:pointer; font-size:13px; }
+  button:hover { background:#333845; }
+  .footer { color:var(--dim); font-size:12px; text-align:center; margin-top:10px; }
+</style>
+</head>
+<body>
+
+<h1>Hành trình Thầy Nam</h1>
+<div class="sub">Tick mỗi buổi đã làm để nhận XP. Dữ liệu lưu trên trình duyệt này.</div>
+
+<div class="card">
+  <div class="level-row">
+    <div><div style="color:var(--dim);font-size:12px">CẤP ĐỘ</div><div class="level" id="level">1</div></div>
+    <div style="text-align:right"><div style="color:var(--dim);font-size:12px">XP</div><div id="xpText" style="font-size:16px">0 / 100</div></div>
+  </div>
+  <div class="xp-bar"><div class="xp-fill" id="xpFill"></div></div>
+  <div class="stats">
+    <div class="stat"><b id="streak">0</b><span>Ngày liên tiếp</span></div>
+    <div class="stat"><b id="sessions">0</b><span>Buổi đã xong tuần này</span></div>
+    <div class="stat"><b id="sleepAvg">--</b><span>Ngủ TB (giờ)</span></div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Danh hiệu</h2>
+  <div class="badges" id="badges"></div>
+</div>
+
+<div class="card">
+  <h2>Lịch tuần</h2>
+  <div id="week"></div>
+</div>
+
+<div class="card">
+  <h2>Chỉ số hôm nay</h2>
+  <div class="inputs">
+    <div><label>Giờ ngủ đêm qua</label><input type="number" step="0.5" id="sleep" placeholder="6.5"></div>
+    <div><label>Cân nặng sáng (kg)</label><input type="number" step="0.1" id="weight" placeholder="84.0"></div>
+    <div><label>Vòng bụng (cm, tuần)</label><input type="number" step="0.5" id="waist" placeholder="--"></div>
+    <div><label>Ghi chú</label><input type="text" id="note" placeholder="Cảm giác hôm nay"></div>
+  </div>
+  <div style="margin-top:12px"><button onclick="resetAll()">Xóa toàn bộ tiến độ</button></div>
+</div>
+
+<div class="footer">Hoàn thành đều là quan trọng nhất. Ngủ dưới 6 tiếng thì bỏ tạ, không tính là thất bại.</div>
+
+<script>
+const KEY = 'tham-nam-tracker-v1';
+const WEEK = [
+  { d:'Thứ Hai', tags:['Dạy 7h-17h30','Foundation 11 19h30'], tasks:[
+    {id:'mon-run', t:'Chạy nhẹ 40\' (4h-5h)', xp:15},
+    {id:'mon-push', t:'Đẩy: ngực, vai, tay sau (5h-6h)', xp:25},
+  ], prep:'Chuẩn bị giáo án Foundation 11 trước 18h. Ngày dài, ngủ 22h30.' },
+  { d:'Thứ Ba', tags:['Dạy 7h-17h30','IELTS 14 19h30'], tasks:[
+    {id:'tue-tempo', t:'Tempo: 6 x (3\' nhanh, 2\' chậm)', xp:20},
+    {id:'tue-pull', t:'Kéo: lưng, tay trước (5h-6h)', xp:25},
+  ], prep:'Chuẩn bị bài IELTS 14 trước 18h30. Ăn nhẹ trước lớp.' },
+  { d:'Thứ Tư', tags:['IELTS 12 19h30'], tasks:[
+    {id:'wed-run', t:'Chạy nhẹ 40\' (4h-5h)', xp:15},
+    {id:'wed-legs', t:'Chân: squat, RDL, leg press (5h-6h)', xp:25},
+  ], prep:'Ngày có lớp tối, ngủ 22h15. Không tập tối.' },
+  { d:'Thứ Năm', tags:['IELTS 12 17h30','IELTS 13 19h30'], tasks:[
+    {id:'thu-run', t:'Chạy chậm 40\' (4h-5h)', xp:15},
+    {id:'thu-core', t:'Core 10\' (5h-6h)', xp:10},
+    {id:'thu-nap', t:'Ngủ bù 30-40\' (14h-17h30)', xp:10},
+  ], prep:'Ngày dài nhất: 2 lớp liên tiếp. Ăn trưa đầy đủ, 16h có chuối.' },
+  { d:'Thứ Sáu', tags:['Dạy 7h-9h40','Ca 16h15-18h15'], tasks:[
+    {id:'fri-run', t:'Chạy nhẹ 30\' (4h-4h30)', xp:12},
+    {id:'fri-core', t:'Core 10\' (4h45)', xp:8},
+  ], prep:'Ra khỏi nhà 6h30. Tạ đã bỏ hôm nay.' },
+  { d:'Thứ Bảy', tags:['Ca 17h-19h','Ca 19h30-21h30'], tasks:[
+    {id:'sat-run', t:'Chạy dài 70-80\' chậm (4h-5h20)', xp:30},
+    {id:'sat-pull', t:'Kéo nhẹ 30\' (5h30-6h)', xp:20},
+  ], prep:'Ăn nhiều tinh bột hơn. Ngủ đúng 22h30.' },
+  { d:'Chủ Nhật', tags:['Dạy 7h15-19h'], tasks:[
+    {id:'sun-rest', t:'Nghỉ hoàn toàn, ngủ đến 6h', xp:20},
+  ], prep:'Ngày kín lịch. Ngủ đủ, không tập.' },
+];
+const BADGES = [
+  {id:'first', name:'Buổi đầu tiên', need:'1 buổi', test:s=>s.total>=1},
+  {id:'streak3', name:'3 ngày liên tiếp', need:'streak 3', test:s=>s.streak>=3},
+  {id:'streak7', name:'Một tuần kỷ luật', need:'streak 7', test:s=>s.streak>=7},
+  {id:'sleep65', name:'Ngủ đủ 6,5 giờ', need:'ngủ ≥6,5h hôm nay', test:s=>s.sleepToday>=6.5},
+  {id:'full', name:'Tuần trọn vẹn', need:'hoàn thành 6 buổi tuần', test:s=>s.weekDone>=6},
+  {id:'lvl5', name:'Cấp 5', need:'đạt cấp 5', test:s=>s.level>=5},
+];
+
+let state = load();
+function load(){ try { return JSON.parse(localStorage.getItem(KEY)) || {done:{}, log:{}}; } catch(e){ return {done:{}, log:{}}; } }
+function save(){ try { localStorage.setItem(KEY, JSON.stringify(state)); } catch(e){} }
+
+function allTasks(){ return WEEK.flatMap(d=>d.tasks); }
+function totalXP(){ return allTasks().filter(t=>state.done[t.id]).reduce((s,t)=>s+t.xp,0); }
+function levelFromXP(xp){ let lvl=1, need=100, rem=xp; while(rem>=need){ rem-=need; lvl++; need=Math.round(need*1.2); } return {lvl, cur:rem, need}; }
+
+function render(){
+  const xp = totalXP();
+  const {lvl, cur, need} = levelFromXP(xp);
+  document.getElementById('level').textContent = lvl;
+  document.getElementById('xpText').textContent = cur + ' / ' + need;
+  document.getElementById('xpFill').style.width = Math.min(100, cur/need*100) + '%';
+
+  const doneTotal = allTasks().filter(t=>state.done[t.id]).length;
+  const weekDone = WEEK.filter(d=>d.tasks.some(t=>state.done[t.id])).length;
+  const days = Object.keys(state.log).sort();
+  let streak = 0;
+  for (let i=days.length-1;i>=0;i--){ if(state.log[days[i]].trained){ streak++; } else break; }
+  const sleeps = days.map(d=>state.log[d].sleep).filter(v=>v);
+  const sleepAvg = sleeps.length ? (sleeps.reduce((a,b)=>a+b,0)/sleeps.length).toFixed(1) : '--';
+  const sleepToday = (state.log[todayKey()]||{}).sleep || 0;
+
+  document.getElementById('streak').textContent = streak;
+  document.getElementById('sessions').textContent = doneTotal;
+  document.getElementById('sleepAvg').textContent = sleepAvg;
+
+  const stats = {total:doneTotal, streak, sleepToday, weekDone, level:lvl};
+  document.getElementById('badges').innerHTML = BADGES.map(b=>{
+    const on = b.test(stats);
+    return `<div class="badge ${on?'on':''}" title="${b.need}">${on?'✓ ':''}${b.name}</div>`;
+  }).join('');
+
+  document.getElementById('week').innerHTML = WEEK.map(d=>`
+    <div class="day">
+      <div class="day-head">
+        <span class="day-name">${d.d}</span>
+        <span>${d.tags.map(t=>`<span class="tag">${t}</span>`).join(' ')}</span>
+      </div>
+      ${d.tasks.map(t=>`
+        <label class="task ${state.done[t.id]?'done':''}">
+          <input type="checkbox" ${state.done[t.id]?'checked':''} onchange="toggle('${t.id}')">
+          <span>${t.t}</span>
+          <span class="tag gold" style="margin-left:auto">+${t.xp} XP</span>
+        </label>`).join('')}
+      <div class="prep">Chuẩn bị: ${d.prep}</div>
+    </div>`).join('');
+
+  const t = state.log[todayKey()] || {};
+  document.getElementById('sleep').value = t.sleep ?? '';
+  document.getElementById('weight').value = t.weight ?? '';
+  document.getElementById('waist').value = t.waist ?? '';
+  document.getElementById('note').value = t.note ?? '';
+}
+
+function todayKey(){ const d=new Date(); return d.toISOString().slice(0,10); }
+
+function toggle(id){
+  state.done[id] = !state.done[id];
+  const today = todayKey();
+  state.log[today] = state.log[today] || {};
+  state.log[today].trained = allTasks().some(t=>state.done[t.id] && t.id.indexOf('sun')!==0 && t.id.indexOf('thu-nap')!==0);
+  save(); render();
+}
+
+function bindInputs(){
+  ['sleep','weight','waist','note'].forEach(k=>{
+    document.getElementById(k).addEventListener('change', e=>{
+      const today = todayKey();
+      state.log[today] = state.log[today] || {};
+      const v = e.target.value;
+      state.log[today][k] = (k==='note') ? v : (v===''?null:parseFloat(v));
+      save(); render();
+    });
+  });
+}
+
+function resetAll(){
+  if(confirm('Xóa toàn bộ tiến độ?')){ state={done:{}, log:{}}; save(); render(); }
+}
+
+// Nhận số liệu từ link (ví dụ ?sleep=6.5&steps=8000) rồi xóa khỏi thanh địa chỉ
+function importFromURL(){
+  const p = new URLSearchParams(location.search);
+  if (!p.has('sleep') && !p.has('weight') && !p.has('waist') && !p.has('steps')) return;
+  const today = todayKey();
+  state.log[today] = state.log[today] || {};
+  if (p.has('sleep')) state.log[today].sleep = parseFloat(p.get('sleep'));
+  if (p.has('weight')) state.log[today].weight = parseFloat(p.get('weight'));
+  if (p.has('waist')) state.log[today].waist = parseFloat(p.get('waist'));
+  if (p.has('steps')) state.log[today].steps = parseInt(p.get('steps'), 10);
+  save();
+  history.replaceState(null, '', location.pathname);
+}
+
+importFromURL();
+bindInputs();
+render();
+</script>
+</body>
+</html>
