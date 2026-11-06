@@ -77,7 +77,11 @@
     <div><label>Vòng bụng (cm, tuần)</label><input type="number" step="0.5" id="waist" placeholder="--"></div>
     <div><label>Ghi chú</label><input type="text" id="note" placeholder="Cảm giác hôm nay"></div>
   </div>
-  <div style="margin-top:12px"><button onclick="resetAll()">Xóa toàn bộ tiến độ</button></div>
+  <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+    <button onclick="exportData()">Xuất dữ liệu</button>
+    <label style="margin:0"><span class="btn-like">Nhập dữ liệu</span><input type="file" accept="application/json" onchange="importData(event)" style="display:none"></label>
+    <button onclick="resetAll()">Xóa toàn bộ tiến độ</button>
+  </div>
 </div>
 
 <div class="footer">Hoàn thành đều là quan trọng nhất. Ngủ dưới 6 tiếng thì bỏ tạ, không tính là thất bại.</div>
@@ -203,6 +207,29 @@ function bindInputs(){
 
 function resetAll(){
   if(confirm('Xóa toàn bộ tiến độ?')){ state={done:{}, log:{}}; save(); render(); }
+}
+
+function exportData(){
+  const blob = new Blob([JSON.stringify(state, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'tracker-' + todayKey() + '.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function importData(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const data = JSON.parse(ev.target.result);
+      if(!data || typeof data.done !== 'object' || typeof data.log !== 'object') throw new Error('bad');
+      state = data; save(); render(); alert('Đã nhập dữ liệu.');
+    } catch(err){ alert('File không hợp lệ.'); }
+  };
+  reader.readAsText(file);
 }
 
 // Nhận số liệu từ link (ví dụ ?sleep=6.5&steps=8000) rồi xóa khỏi thanh địa chỉ
